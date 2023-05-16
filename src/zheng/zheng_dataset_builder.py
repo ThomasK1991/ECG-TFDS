@@ -4,7 +4,6 @@ import tensorflow_datasets as tfds
 from preprocessing import Preprocess
 import numpy as np
 import pandas as pd
-import hashlib
 import urllib.request
 
 class Builder(tfds.core.GeneratorBasedBuilder):

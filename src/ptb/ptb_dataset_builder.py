@@ -5,7 +5,7 @@ import pandas as pd
 import wfdb
 import numpy as np
 import ast
-from preprocessing import Preprocess
+from src.utils.preprocessing import Preprocess
 
 
 class Builder(tfds.core.GeneratorBasedBuilder):

@@ -30,7 +30,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
   def _split_generators(self, dl_manager: tfds.download.DownloadManager):
     """Returns SplitGenerators."""
     # TODO(icentia11k): Downloads the data and defines the splits
-    path = dl_manager.download_and_extract('https://todo-data-url')
+    path = dl_manager.download_and_extract('https://physionet.org/static/published-projects/icentia11k-continuous-ecg/icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip')
 
     # TODO(icentia11k): Returns the Dict[split names, Iterator[Key, Example]]
     return {

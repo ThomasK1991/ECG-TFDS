@@ -1,7 +1,7 @@
 """zheng dataset."""
 
 import tensorflow_datasets as tfds
-from preprocessing import Preprocess
+from src.utils.preprocessing import Preprocess
 import numpy as np
 import pandas as pd
 import urllib.request

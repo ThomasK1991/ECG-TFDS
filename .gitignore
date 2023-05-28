@@ -160,3 +160,4 @@ cython_debug/
 .idea/
 Diagnostic.xlsx
 __init__.py
+/src/zheng/Diagnostics.xlsx

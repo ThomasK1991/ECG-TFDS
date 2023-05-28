@@ -8,7 +8,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
-import sklearn.preprocessing as prepr
+import sklearn.preprocessing as sp
 import numpy as np
 import neurokit2 as nk
 
@@ -59,11 +59,13 @@ class Preprocess:
 
         sampling_rate_source = sampling_rate
         ecg_clean = self.clean(data, sampling_rate_source)
+
+
         rpeaks = self.pqrst_peaks(ecg_clean, sampling_rate_source)
 
         temp = rpeaks['ECG_' + self.peak + '_Peaks'] - self.onset
         temp = temp[temp >= 0]
-        temp = temp[(temp + self.window_length) < 5000]
+        temp = temp[(temp + self.window_length) < len(data)]
 
         for k in temp:
             temp1 = nk.signal.signal_resample(
@@ -75,7 +77,7 @@ class Preprocess:
             qual.append(self.quality(temp1, sampling_rate_source))
 
         result = np.array(result)
-        result = prepr.minmax_scale(result)
+        result = sp.minmax_scale(result,axis=1)
         result = result.reshape(len(result), self.final_length, 1)
 
         return result, qual

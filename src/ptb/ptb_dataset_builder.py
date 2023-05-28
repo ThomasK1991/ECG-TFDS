@@ -5,15 +5,20 @@ import pandas as pd
 import wfdb
 import numpy as np
 import ast
-from src.utils.preprocessing import Preprocess
+from utils.preprocessing import Preprocess
+import sys
+import os
+
+project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(project_path)
 
 
 class Builder(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for ptb dataset."""
 
-    VERSION = tfds.core.Version('1.0.0')
+    VERSION = tfds.core.Version('1.0.1')
     RELEASE_NOTES = {
-        '1.0.0': 'Initial release.',
+        '1.0.1': 'Initial release.',
     }
 
     def _info(self) -> tfds.core.DatasetInfo:
@@ -39,9 +44,9 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 path / 'ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3'),
         }
 
-    def aggregate_diagnostic(self, path, y_dic):
+    def aggregate_diagnostic(self, y_dic, path):
         tmp = []
-        agg_df = pd.read_csv(path + 'scp_statements.csv', index_col=0)
+        agg_df = pd.read_csv(path + '/' + 'scp_statements.csv', index_col=0)
         agg_df = agg_df[agg_df.diagnostic == 1]
         for key in y_dic.keys():
             if key in agg_df.index:
@@ -55,7 +60,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
         # TODO(ptb): Yields (key, example) tuples from the dataset
         metadata = pd.read_csv(str(path) + '/' + 'ptbxl_database.csv', index_col='ecg_id')
         metadata.scp_codes = metadata.scp_codes.apply(lambda x: ast.literal_eval(x))
-        # metadata['diagnostic_superclass'] = metadata.scp_codes.apply(self.aggregate_diagnostic)
+        metadata['diagnostic_superclass'] = metadata.scp_codes.apply(self.aggregate_diagnostic, path=str(path))
 
         for index, row in metadata.iterrows():
             data = wfdb.rdsamp(str(path) + '/' + row['filename_hr'])[0][:, 0]

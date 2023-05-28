@@ -1,10 +1,15 @@
 """zheng dataset."""
 
 import tensorflow_datasets as tfds
-from src.utils.preprocessing import Preprocess
+from utils.preprocessing import Preprocess
 import numpy as np
 import pandas as pd
 import urllib.request
+import sys
+import os
+
+project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(project_path)
 
 class Builder(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for zheng dataset."""
@@ -21,7 +26,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
             features=tfds.features.FeaturesDict({
                 'ecg': tfds.features.Sequence({
                     'I': np.float64,
-                }),
+                }, length=500, doc='Single heartbeats of 1 second length'),
                 'rhythm': tfds.features.ClassLabel(
                     names_file='./metadata/rhythm.txt'
                 ),
@@ -43,7 +48,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 'q_offset': np.uint8,
                 't_offset': np.uint8,
             }),
-            supervised_keys=None,
+            supervised_keys=('ecg', 'rhythm'),
             homepage='https://figshare.com/collections/ChapmanECG/4560497/2',
         )
 

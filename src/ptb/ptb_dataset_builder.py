@@ -16,9 +16,9 @@ sys.path.append(project_path)
 class Builder(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for ptb dataset."""
 
-    VERSION = tfds.core.Version('1.0.1')
+    VERSION = tfds.core.Version('1.0.0')
     RELEASE_NOTES = {
-        '1.0.1': 'Initial release.',
+        '1.0.0': 'Initial release.',
     }
 
     def _info(self) -> tfds.core.DatasetInfo:
@@ -30,6 +30,8 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 }),
                 'quality': tfds.features.ClassLabel(names=['Unacceptable', 'Barely acceptable', 'Excellent', '[]']),
                 'age': np.uint8,
+                'gender': np.uint8,
+                'diagnostic': tfds.features.ClassLabel(names=['STTC', 'NORM', 'MI', 'HYP', 'CD', 'NAV']),
             }),
             supervised_keys=None,
             homepage='https://physionet.org/content/ptb-xl/1.0.3/',
@@ -68,10 +70,13 @@ class Builder(tfds.core.GeneratorBasedBuilder):
 
             for j, k in enumerate(data_prep):
                 key = str(row['patient_id']) + "_" + str(index) + "_" + str(j)
+                diagnostic = "NAV" if len(row['diagnostic_superclass']) == 0 else row['diagnostic_superclass'][0]
                 yield key, {
                     'ecg': {
                         'I': k.flatten(),
                     },
                     'quality': str(q[j]),
                     'age': row['age'],
+                    'gender': row['sex'],
+                    'diagnostic': diagnostic,
                 }

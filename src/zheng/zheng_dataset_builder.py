@@ -11,6 +11,7 @@ import os
 project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(project_path)
 
+
 class Builder(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for zheng dataset."""
 
@@ -21,7 +22,6 @@ class Builder(tfds.core.GeneratorBasedBuilder):
 
     def _info(self) -> tfds.core.DatasetInfo:
         """Returns the dataset metadata."""
-        # TODO(zheng): Specifies the tfds.core.DatasetInfo object
         return self.dataset_info_from_configs(
             features=tfds.features.FeaturesDict({
                 'ecg': tfds.features.Sequence({

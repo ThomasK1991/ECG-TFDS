@@ -59,7 +59,6 @@ class Builder(tfds.core.GeneratorBasedBuilder):
         """Yields examples."""
         preprocessor = Preprocess(250, 250, peak='R', final_length=500)
 
-        # TODO(ptb): Yields (key, example) tuples from the dataset
         metadata = pd.read_csv(str(path) + '/' + 'ptbxl_database.csv', index_col='ecg_id')
         metadata.scp_codes = metadata.scp_codes.apply(lambda x: ast.literal_eval(x))
         metadata['diagnostic_superclass'] = metadata.scp_codes.apply(self.aggregate_diagnostic, path=str(path))

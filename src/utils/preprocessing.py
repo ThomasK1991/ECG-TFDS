@@ -2,40 +2,43 @@ import sklearn.preprocessing as sp
 import numpy as np
 import neurokit2 as nk
 
-
-class Preprocess:
+class Preprocessor:
     def __init__(self, onset: int, offset: int, final_length: int = None, peak='R'):
         self.onset = onset
         self.offset = offset
-        self.window_length = self.onset + self.offset
+        self.window_length = onset + offset
         self.final_length = final_length or self.window_length
         self.peak = peak
 
     def clean(self, ecg_signal, sampling_rate):
+        """Clean the ECG signal using neurokit2's ecg_clean."""
         try:
             clean = nk.ecg_clean(ecg_signal, sampling_rate=sampling_rate)
             return clean
-        except:
-            return []
+        except Exception as e:
+            raise ValueError("Error during ECG cleaning: " + str(e))
 
     def quality(self, ecg_signal, sampling_rate):
+        """Compute ECG quality using neurokit2's ecg_quality."""
         try:
             quality = nk.ecg_quality(ecg_signal, sampling_rate=sampling_rate, method="zhao2018")
             return quality
-        except:
-            return []
+        except Exception as e:
+            raise ValueError("Error computing ECG quality: " + str(e))
 
     def pqrst_peaks(self, ecg_signal, sampling_rate):
+        """Find PQRST peaks using neurokit2's ecg_peaks and ecg_delineate."""
         accessor = 'ECG_' + self.peak + '_Peaks'
         try:
             _, waves_peak = nk.ecg_peaks(ecg_signal, sampling_rate=sampling_rate)
             if self.peak != 'R':
                 _, waves_peak = nk.ecg_delineate(ecg_signal, waves_peak, sampling_rate=sampling_rate, method="peak")
-            return {accessor: waves_peak[accessor], 'sampling_rate': 500}
+            return {accessor: waves_peak[accessor], 'sampling_rate': sampling_rate}
         except Exception as e:
-            return {accessor: np.empty(0), 'sampling_rate': 500}
+            raise ValueError("Error finding PQRST peaks: " + str(e))
 
     def preprocess(self, data, sampling_rate):
+        """Preprocess the ECG data."""
         result = []
         qual = []
 

@@ -1,11 +1,15 @@
 """icentia11k dataset."""
 
 import tensorflow_datasets as tfds
-import pickle
-import gzip
-import os
+import wfdb
 from utils.preprocessing import Preprocess
 import numpy as np
+import sys
+import os
+import pandas as pd
+
+project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(project_path)
 
 class Builder(tfds.core.GeneratorBasedBuilder):
   """DatasetBuilder for icentia11k dataset."""
@@ -22,9 +26,11 @@ class Builder(tfds.core.GeneratorBasedBuilder):
             features=tfds.features.FeaturesDict({
                 'ecg': tfds.features.Sequence({
                     'I': np.float64,
-                }, length=500, doc='Single heartbeats of 1 second length'),
+                }, length=100, doc='Single heartbeats of 1 second length'),
+                'patient': np.int64,
+                'segment': np.int64,
                 'rhythm': tfds.features.ClassLabel(names=['N', 'AFIB', 'AFL']),
-                'beat': tfds.features.ClassLabel(names=['N', 'PAC', 'PVC', 'Q']),
+                'beat': tfds.features.ClassLabel(names=['N', 'Q', 'S', 'V']),
                 'quality': tfds.features.ClassLabel(names=['Unacceptable', 'Barely acceptable', 'Excellent', '[]']),
             }),
             supervised_keys=('ecg', 'beat'),
@@ -33,55 +39,49 @@ class Builder(tfds.core.GeneratorBasedBuilder):
 
   def _split_generators(self, dl_manager: tfds.download.DownloadManager):
     """Returns SplitGenerators."""
-    path = dl_manager.download_and_extract('https://physionet.org/static/published-projects/icentia11k-continuous-ecg/icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip')
+    # path = dl_manager.download_and_extract('https://physionet.org/static/published-projects/icentia11k-continuous-ecg/icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip')
+    path = './data/'
 
-    # TODO(icentia11k): Returns the Dict[split names, Iterator[Key, Example]]
+    segment_list = [
+        ['p00045', 's00'],
+        ['p00045', 's01'],
+        ['p00002', 's00'],
+        ['p00002', 's01'],
+        ['p00002', 's02'],
+        ['p00002', 's04'],
+    ]
     return {
-        'train': self._generate_examples(path / 'icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0'),
+        'train': self._generate_examples(path, segment_list),
     }
 
-  def _generate_examples(self, path):
+  def _generate_examples(self, path, segments):
 
-    preprocessor = Preprocess(250, 250, peak='R', final_length=500)
+    preprocessor = Preprocess(125, 125, peak='R', final_length=100)
 
-    sample_id = 1
-    filename = os.path.join(path, ("%05d" % sample_id) + "_batched_lbls.pkl.gz")
-    filename_ecg = os.path.join(path, ("%05d" % sample_id) + "_batched.pkl.gz")
+    for k in segments:
+        patient, segment = k
+        filename = path + str(patient) + '_' + str(segment)
+        rec = wfdb.rdrecord(filename)
+        ann = wfdb.rdann(filename, "atr")
 
-    segments = pickle.load(gzip.open(filename))
-    ecg = pickle.load(gzip.open(filename_ecg))
+        ann.symbol = np.array(ann.symbol)
+        ann.sample = np.array(ann.sample)
 
-    for segment_id, segment_labels in enumerate(segments):
+        signal = rec.p_signal.flatten()
+        rpeaks = pd.DataFrame(ann.sample[ann.symbol != '+'], columns=['ECG_R_Peaks'])
+        labels = ann.symbol[ann.symbol != '+']
 
-        beat_val = []
-        beat_label = []
-        rhythm_val = []
-        rhythm_label = []
+        ecg_clean, q, ind = preprocessor.preprocess(data=signal, sampling_rate=ann.fs, rpeaks=rpeaks)
+        labels = labels[ind]
 
-        for k in range(len(segment_labels['btype'])):
-            temp = segment_labels['btype'][k]
-            beat_val.append(temp)
-            beat_label.append(np.full(len(temp), k))
-
-        for k in range(len(segment_labels['rtype'])):
-            temp = segment_labels['rtype'][k]
-            rhythm_val.append(temp)
-            rhythm_label.append(np.full(len(temp), k))
-
-        beat_val = np.concatenate(beat_val) * 2
-        beat_label = np.concatenate(beat_label)
-
-        rhythm_val = np.concatenate(rhythm_val) * 2
-        rhythm_label = np.concatenate(rhythm_label)
-
-        ecg_clean, q = preprocessor.preprocess(data=ecg[segment_id], sampling_rate=250)
-
-        for i, k in ecg_clean:
-            yield 'key', {
+        for i, k in enumerate(ecg_clean[:,:,0]):
+            yield str(patient) + '_' + str(segment) + '_' + str(i), {
                 'ecg': {
                     'I': k,
                 },
+                'patient': int(patient[1:]),
+                'segment': int(segment[1:]),
                 'rhythm': 'N',
-                'beat': 'N',
+                'beat': labels[i],
                 'quality': q[i],
             }

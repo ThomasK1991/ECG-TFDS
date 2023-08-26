@@ -33,6 +33,7 @@ To incorporate a new dataset into the collection, follow these steps:
    ```sh
    tfds build --register_checksums
 8. Navigate to `./electrocardiogram` and append the dataset to the collection in `electrocardiogram.py`.
-9. Create a pull request and provide a concise motivation, description, and dataset metadata, including details like count, size, dataset license, and source.
+9. Modify the `requirements.txt` and this `README` file accordingly
+10. Create a pull request and provide a concise motivation, description, and dataset metadata, including details like count, size, dataset license, and source.
 
 Ensure adherence to these steps to seamlessly integrate the new dataset into the collection.

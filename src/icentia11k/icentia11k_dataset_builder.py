@@ -74,7 +74,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 },
                 'patient': int(subject),
                 'segment': int(segment),
-                'rhythm': 'N',
+                # 'rhythm': 'N',
                 'beat': labels[i],
                 'quality': q[i],
             }

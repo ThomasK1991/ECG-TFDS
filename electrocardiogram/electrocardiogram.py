@@ -26,5 +26,6 @@ class Electrocardiogram(dataset_collection_builder.DatasetCollection):
                 naming.references_for({
                     "zheng": "zheng:1.0.0",
                     "ptb": "ptb:1.0.0",
+                    "icentia": "icentia11k:1.0.0",
                 })
         })

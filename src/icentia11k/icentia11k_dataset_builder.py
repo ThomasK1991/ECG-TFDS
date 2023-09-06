@@ -53,7 +53,8 @@ class Builder(tfds.core.GeneratorBasedBuilder):
     preprocessor = Preprocess(125, 125, peak='R', final_length=500)
 
     for segment in range(0, 2):
-        filename = path + 'p' + f"{subject :05d}" + '_s' + f"{segment :02d}"
+        t = segment // 1000
+        filename = path + 'p' + f"{t :02d}" + '/p' + f"{subject :05d}" + '/p' + f"{subject :05d}" + '_s' + f"{segment :02d}"
         rec = wfdb.rdrecord(filename)
         ann = wfdb.rdann(filename, "atr")
 
@@ -74,7 +75,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 },
                 'patient': int(subject),
                 'segment': int(segment),
-                # 'rhythm': 'N',
+                'rhythm': 'N',
                 'beat': labels[i],
                 'quality': q[i],
             }

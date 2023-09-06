@@ -160,3 +160,8 @@ cython_debug/
 .idea/
 */Diagnostic.xlsx
 src/zheng/Diagnostics.xlsx
+data/*
+*.atr
+*.dat
+*.hea
+*.csv

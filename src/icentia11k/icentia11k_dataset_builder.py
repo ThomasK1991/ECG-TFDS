@@ -26,7 +26,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
             features=tfds.features.FeaturesDict({
                 'ecg': tfds.features.Sequence({
                     'I': np.float64,
-                }, length=100, doc='Single heartbeats of 1 second length'),
+                }, length=500, doc='Single heartbeats of 1 second length'),
                 'patient': np.int64,
                 'segment': np.int64,
                 'rhythm': tfds.features.ClassLabel(names=['N', 'AFIB', 'AFL']),
@@ -39,28 +39,21 @@ class Builder(tfds.core.GeneratorBasedBuilder):
 
   def _split_generators(self, dl_manager: tfds.download.DownloadManager):
     """Returns SplitGenerators."""
-    # path = dl_manager.download_and_extract('https://physionet.org/static/published-projects/icentia11k-continuous-ecg/icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip')
+
+    result = {}
+
     path = './data/'
+    for k in range(0, 2):
+        result.update({str(k): self._generate_examples(path, k)})
 
-    segment_list = [
-        ['p00045', 's00'],
-        ['p00045', 's01'],
-        ['p00002', 's00'],
-        ['p00002', 's01'],
-        ['p00002', 's02'],
-        ['p00002', 's04'],
-    ]
-    return {
-        'train': self._generate_examples(path, segment_list),
-    }
+    return result
 
-  def _generate_examples(self, path, segments):
+  def _generate_examples(self, path, subject):
 
-    preprocessor = Preprocess(125, 125, peak='R', final_length=100)
+    preprocessor = Preprocess(125, 125, peak='R', final_length=500)
 
-    for k in segments:
-        patient, segment = k
-        filename = path + str(patient) + '_' + str(segment)
+    for segment in range(0, 2):
+        filename = path + 'p' + f"{subject :05d}" + '_s' + f"{segment :02d}"
         rec = wfdb.rdrecord(filename)
         ann = wfdb.rdann(filename, "atr")
 
@@ -75,12 +68,12 @@ class Builder(tfds.core.GeneratorBasedBuilder):
         labels = labels[ind]
 
         for i, k in enumerate(ecg_clean[:,:,0]):
-            yield str(patient) + '_' + str(segment) + '_' + str(i), {
+            yield str(subject) + '_' + str(segment) + '_' + str(i), {
                 'ecg': {
                     'I': k,
                 },
-                'patient': int(patient[1:]),
-                'segment': int(segment[1:]),
+                'patient': int(subject),
+                'segment': int(segment),
                 'rhythm': 'N',
                 'beat': labels[i],
                 'quality': q[i],

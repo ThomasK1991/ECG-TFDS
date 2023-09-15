@@ -14,6 +14,7 @@ Load common open-source ECG databases as a tensorflow dataset.
 ## Available Datasets
 1. Shaoxing (zheng): https://www.nature.com/articles/s41597-020-0386-x
 2. PTB-XL: https://www.nature.com/articles/s41597-020-0495-6
+3. Icentia11k: https://physionet.org/content/icentia11k-continuous-ecg/1.0/
 
 ## How to Add a New Dataset?
 

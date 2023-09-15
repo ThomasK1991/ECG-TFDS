@@ -16,9 +16,9 @@ sys.path.append(project_path)
 class Builder(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for ptb dataset."""
 
-    VERSION = tfds.core.Version('1.0.0')
+    VERSION = tfds.core.Version('1.0.1')
     RELEASE_NOTES = {
-        '1.0.0': 'Initial release.',
+        '1.0.1': 'Initial release.',
     }
 
     def _info(self) -> tfds.core.DatasetInfo:
@@ -65,17 +65,17 @@ class Builder(tfds.core.GeneratorBasedBuilder):
 
         for index, row in metadata.iterrows():
             data = wfdb.rdsamp(str(path) + '/' + row['filename_hr'])[0][:, 0]
-            data_prep, q = preprocessor.preprocess(data=data, sampling_rate=500)
+            data_prep, q, ind = preprocessor.preprocess(data=data, sampling_rate=500)
 
-            for j, k in enumerate(data_prep):
-                key = str(row['patient_id']) + "_" + str(index) + "_" + str(j)
-                diagnostic = "NAV" if len(row['diagnostic_superclass']) == 0 else row['diagnostic_superclass'][0]
-                yield key, {
-                    'ecg': {
-                        'I': k.flatten(),
-                    },
-                    'quality': str(q[j]),
-                    'age': row['age'],
-                    'gender': row['sex'],
-                    'diagnostic': diagnostic,
-                }
+            #for j, k in enumerate(data_prep):
+            key = str(row['patient_id']) + "_" + str(index)
+            diagnostic = "NAV" if len(row['diagnostic_superclass']) == 0 else row['diagnostic_superclass'][0]
+            yield key, {
+                'ecg': {
+                    'I':np.median(data_prep, axis=0).flatten(),
+                },
+                'quality': str(q[0]),
+                'age': row['age'],
+                'gender': row['sex'],
+                'diagnostic': diagnostic,
+            }

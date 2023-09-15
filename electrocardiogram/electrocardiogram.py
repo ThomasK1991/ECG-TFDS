@@ -24,8 +24,8 @@ class Electrocardiogram(dataset_collection_builder.DatasetCollection):
         return collections.OrderedDict({
             "1.0.0":
                 naming.references_for({
-                    "zheng": "zheng:1.0.0",
-                    "ptb": "ptb:1.0.0",
-                    "icentia": "icentia11k:1.0.0",
+                    "zheng": "zheng:1.0.2",
+                    "ptb": "ptb:1.0.1",
+                    "icentia": "icentia11k:1.0.2",
                 })
         })

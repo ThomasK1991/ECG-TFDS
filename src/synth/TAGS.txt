@@ -1,0 +1,3 @@
+content.data-type.time-series # Contains time-series data.
+content.subject.health # Relates to health.
+ml.task.unsupervised-anomaly-detection # Relates to Unsupervised Anomaly Detection, a machine learning task.

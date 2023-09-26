@@ -27,5 +27,6 @@ class Electrocardiogram(dataset_collection_builder.DatasetCollection):
                     "zheng": "zheng:1.0.2",
                     "ptb": "ptb:1.0.1",
                     "icentia": "icentia11k:1.0.2",
+                    "synth": "synth:1.0.0",
                 })
         })

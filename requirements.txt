@@ -3,3 +3,4 @@ numpy
 neurokit2
 openpyxl
 pandas
+matlabengine

@@ -165,3 +165,4 @@ data/*
 *.dat
 *.hea
 *.csv
+/src/synth/physionet.org/

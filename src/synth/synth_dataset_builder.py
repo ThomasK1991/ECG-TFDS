@@ -3,15 +3,15 @@
 import tensorflow_datasets as tfds
 from utils.preprocessing import Preprocess
 import numpy as np
-import itertools
 import subprocess
+
 
 class Builder(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for synth dataset."""
 
-    VERSION = tfds.core.Version('1.0.3')
+    VERSION = tfds.core.Version('1.0.0')
     RELEASE_NOTES = {
-        '1.0.3': 't + p wave',
+        '1.0.0': 'Initial release.',
     }
 
     def runcmd(self, cmd, verbose=False, *args, **kwargs):
@@ -61,7 +61,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
         path = eng.genpath('./physionet.org/files/ecgsyn/1.0.0/Matlab/')
         eng.addpath(path, nargout=0)
 
-        for t_extrema in np.linspace(-2, 2,10):
+        for t_extrema in np.linspace(-2, 2, 10):
             for p_extrema in np.linspace(-2, 2, 10):
                 res = eng.ecgsyn(
                     matlab.double(512),  # sfecg: ECG sampling frequency [256 Hertz]
@@ -73,10 +73,11 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                     matlab.double(512),  # sfint: Internal sampling frequency [256 Hertz]
                     # Order of extrema: [P Q R S T]
                     matlab.double([-70, -15, 0, 15, 100]),  # ti = angles of extrema [-70 -15 0 15 100] degrees
-                    matlab.double([p_extrema, -5, 30, -7.5, t_extrema]),  # ai = z-position of extrema [1.2 -5 30 -7.5 0.75]
+                    matlab.double([p_extrema, -5, 30, -7.5, t_extrema]),
+                    # ai = z-position of extrema [1.2 -5 30 -7.5 0.75]
                     matlab.double([0.25, 0.1, 0.1, 0.1, 0.4]),  # bi = Gaussian width of peaks [0.25 0.1 0.1 0.1 0.4]
                 )
-                data_prep, q, ind = preprocessor.preprocess(data=np.array(res)[:,0], sampling_rate=512)
+                data_prep, q, ind = preprocessor.preprocess(data=np.array(res)[:, 0], sampling_rate=512)
                 for j, k in enumerate(data_prep):
                     key = str(hash('key_' + str(j) + '_' + str(t_extrema) + '_' + str(p_extrema)))
                     yield key, {

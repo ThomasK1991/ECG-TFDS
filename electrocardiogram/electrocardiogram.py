@@ -28,5 +28,6 @@ class Electrocardiogram(dataset_collection_builder.DatasetCollection):
                     "ptb": "ptb:1.0.1",
                     "icentia": "icentia11k:1.0.2",
                     "synth": "synth:1.0.0",
+                    "medalcare": "medalcare:1.0.0",
                 })
         })

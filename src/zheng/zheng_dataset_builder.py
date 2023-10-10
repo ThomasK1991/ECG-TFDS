@@ -15,9 +15,9 @@ sys.path.append(project_path)
 class Builder(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for zheng dataset."""
 
-    VERSION = tfds.core.Version('1.0.2')
+    VERSION = tfds.core.Version('1.0.7')
     RELEASE_NOTES = {
-        '1.0.2': 'Initial release.',
+        '1.0.7': 'Initial release.',
     }
 
     def _info(self) -> tfds.core.DatasetInfo:
@@ -70,7 +70,6 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 data = pd.read_csv(f, delimiter=',', header=None, usecols=[0], names=['I'])
                 data = data['I'].to_numpy().flatten()
                 data_prep, q, ind = preprocessor.preprocess(data=data, sampling_rate=500)
-                #for j, k in enumerate(data_prep):
                 key = row['FileName']
                 yield key, {
                     'ecg': {

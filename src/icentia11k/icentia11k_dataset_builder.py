@@ -22,7 +22,6 @@ class Builder(tfds.core.GeneratorBasedBuilder):
 
     def _info(self) -> tfds.core.DatasetInfo:
         """Returns the dataset metadata."""
-        # TODO(icentia11k): Specifies the tfds.core.DatasetInfo object
         return self.dataset_info_from_configs(
             features=tfds.features.FeaturesDict({
                 'ecg': tfds.features.Sequence({
@@ -46,7 +45,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
         # TODO: Adjust the path to your needs - due to the size of the dataset (> 1 TB unzipped) no automatic
         #  download is provided
         path = './data/'
-        for k in range(0, 2):
+        for k in range(0, 11000):
             result.update({str(k): self._generate_examples(path, k)})
 
         return result
@@ -78,6 +77,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                     },
                     'patient': int(subject),
                     'segment': int(segment),
+                    # TODO: the rhythm information is now statically set to N
                     'rhythm': 'N',
                     'beat': labels[i],
                     'quality': q[i],

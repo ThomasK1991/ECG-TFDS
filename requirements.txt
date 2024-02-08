@@ -4,3 +4,5 @@ neurokit2
 openpyxl
 pandas
 matlabengine
+tensorflow
+wfdb

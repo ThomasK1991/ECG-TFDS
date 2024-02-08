@@ -16,9 +16,9 @@ sys.path.append(project_path)
 class Builder(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for ptb dataset."""
 
-    VERSION = tfds.core.Version('1.0.0')
+    VERSION = tfds.core.Version('1.0.3')
     RELEASE_NOTES = {
-        '1.0.0': 'Initial release.',
+        '1.0.3': 'Initial release.',
     }
 
     def _info(self) -> tfds.core.DatasetInfo:
@@ -28,6 +28,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 'ecg': tfds.features.Sequence({
                     'I': np.float64,
                 }),
+                'subject': np.int32,
                 'quality': tfds.features.ClassLabel(names=['Unacceptable', 'Barely acceptable', 'Excellent', '[]']),
                 'age': np.uint8,
                 'gender': np.uint8,
@@ -67,15 +68,16 @@ class Builder(tfds.core.GeneratorBasedBuilder):
             data = wfdb.rdsamp(str(path) + '/' + row['filename_hr'])[0][:, 0]
             data_prep, q, ind = preprocessor.preprocess(data=data, sampling_rate=500)
 
-            #for j, k in enumerate(data_prep):
-            key = str(row['patient_id']) + "_" + str(index)
-            diagnostic = "NAV" if len(row['diagnostic_superclass']) == 0 else row['diagnostic_superclass'][0]
-            yield key, {
-                'ecg': {
-                    'I':np.median(data_prep, axis=0).flatten(),
-                },
-                'quality': str(q[0]),
-                'age': row['age'],
-                'gender': row['sex'],
-                'diagnostic': diagnostic,
-            }
+            for j, k in enumerate(data_prep):
+                key = str(row['patient_id']) + "_" + str(index) + "_" + str(j)
+                diagnostic = "NAV" if len(row['diagnostic_superclass']) == 0 else row['diagnostic_superclass'][0]
+                yield key, {
+                    'ecg': {
+                        'I': k.flatten(),
+                    },
+                    'subject': index,
+                    'quality': str(q[0]),
+                    'age': row['age'],
+                    'gender': row['sex'],
+                    'diagnostic': diagnostic,
+                }

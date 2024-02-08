@@ -10,9 +10,9 @@ from utils.preprocessing import Preprocess
 class Builder(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for medalcare dataset."""
 
-    VERSION = tfds.core.Version('1.0.0')
+    VERSION = tfds.core.Version('1.0.4')
     RELEASE_NOTES = {
-        '1.0.0': 'Initial release.',
+        '1.0.4': 'Initial release.',
     }
 
     def _info(self) -> tfds.core.DatasetInfo:
@@ -23,6 +23,8 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 'ecg': tfds.features.Sequence({
                     'I': np.float64,
                 }),
+                'subject': np.int32,
+                'diagnosis': tfds.features.ClassLabel(names=['avblock', 'fam', 'iab', 'lae', 'lbbb', 'mi', 'rbbb', 'sinus']),
                 'v_G.lungs': np.float64,
                 'v_G.ischemia': np.float64,
                 'v_G.torso': np.float64,
@@ -191,7 +193,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
         files = glob.glob(path + '/*.txt', recursive=True)
         preprocessor = Preprocess(250, 250, peak='R', final_length=500)
 
-        for k in list(set([item[:item.rfind('_')] for item in files])):
+        for subject, k in enumerate(list(set([item[:item.rfind('_')] for item in files]))):
             try:
                 atrial = pd.read_csv(k + '_AtrialParameters.txt', sep=' ', skiprows=2).ffill(axis=1)
                 ventricular = pd.read_csv(k + '_VentricularParameters.txt', sep=' ').ffill(axis=1)
@@ -201,39 +203,46 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 data_prep, q, ind = preprocessor.preprocess(data=signal, sampling_rate=500)
                 atrial.iloc[:, -1] = atrial.iloc[:, -1].apply(
                     lambda x: x.replace('mm/s', '').replace('deg', '').replace('mm', ''))
-                dict = {
-                    'ecg': {
-                        'I': np.median(data_prep, axis=0).flatten(),
-                    },
-                }
 
-                for j in allowed:
-                    dict.update({j: 0.0})
+                result = [part for part in k.split("/") if part]
+                print(result[10])
 
-                for j, val in ventricular.iterrows():
-                    ke = 'v_' + val.iloc[0]
+                for i, t in enumerate(data_prep):
+                    dict = {
+                        'ecg': {
+                            'I': t.flatten(),
+                        },
+                        'subject': subject,
+                        'diagnosis': result[10] #TODO: 10 is set statically --> needs to be adapt
+                    }
 
-                    if ke in allowed:
+                    for j in allowed:
+                        dict.update({j: 0.0})
+
+                    for j, val in ventricular.iterrows():
+                        ke = 'v_' + val.iloc[0]
+
+                        if ke in allowed:
+                            va = 0.0
+                            try:
+                                va = np.float64(val.iloc[-1])
+                            except:
+                                if (val.iloc[-1] == 'True') | (val.iloc[-1] == 'False'):
+                                    va = val.iloc[-1]
+                            dict.update({ke: va})
+
+                    for j, val in atrial.iterrows():
+                        ke = 'a_' + val.iloc[0]
                         va = 0.0
-                        try:
-                            va = np.float64(val.iloc[-1])
-                        except:
-                            if (val.iloc[-1] == 'True') | (val.iloc[-1] == 'False'):
-                                va = val.iloc[-1]
-                        dict.update({ke: va})
+                        if ke in allowed:
+                            try:
+                                va = np.float64(val.iloc[-1])
+                            except:
+                                if (val.iloc[-1] == 'True') | (val.iloc[-1] == 'False'):
+                                    va = val.iloc[-1]
+                            dict.update({ke: va})
 
-                for j, val in atrial.iterrows():
-                    ke = 'a_' + val.iloc[0]
-                    va = 0.0
-                    if ke in allowed:
-                        try:
-                            va = np.float64(val.iloc[-1])
-                        except:
-                            if (val.iloc[-1] == 'True') | (val.iloc[-1] == 'False'):
-                                va = val.iloc[-1]
-                        dict.update({ke: va})
-
-                yield k, dict
+                    yield k + '_' + str(i), dict
 
             except Exception as e:
                 print(e)

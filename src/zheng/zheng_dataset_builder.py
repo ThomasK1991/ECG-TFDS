@@ -15,9 +15,9 @@ sys.path.append(project_path)
 class Builder(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for zheng dataset."""
 
-    VERSION = tfds.core.Version('1.0.0')
+    VERSION = tfds.core.Version('1.0.9')
     RELEASE_NOTES = {
-        '1.0.0': 'Initial release.',
+        '1.0.9': 'Initial release.',
     }
 
     def _info(self) -> tfds.core.DatasetInfo:
@@ -27,6 +27,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 'ecg': tfds.features.Sequence({
                     'I': np.float64,
                 }, length=500, doc='Single heartbeats of 1 second length'),
+                'subject': np.int32,
                 'rhythm': tfds.features.ClassLabel(
                     names_file='./metadata/rhythm.txt'
                 ),
@@ -71,27 +72,31 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 data = data['I'].to_numpy().flatten()
                 data_prep, q, ind = preprocessor.preprocess(data=data, sampling_rate=500)
                 key = row['FileName']
-                yield key, {
-                    'ecg': {
-                        'I': np.median(data_prep, axis=0).flatten(),
-                    },
-                    'rhythm': row['Rhythm'],
-                    'beat': row['Beat'],
-                    'quality': q[0],
-                    'age': row['PatientAge'],
-                    'gender': row['Gender'],
-                    'ventricular_rate': row['VentricularRate'],
-                    'atrial_rate': row['AtrialRate'],
-                    'qrs_duration': row['QRSDuration'],
-                    'qt_interval': row['QTInterval'],
-                    'qt_corrected': row['QTCorrected'],
-                    'r_axis': row['RAxis'],
-                    't_axis': row['TAxis'],
-                    'qrs_count': row['QRSCount'],
-                    'q_onset': row['QOnset'],
-                    'q_offset': row['QOffset'],
-                    't_offset': row['TOffset'],
-                }
+                k = 0
+                for t in data_prep:
+                    k = k + 1
+                    yield key + '_' + str(k), {
+                        'ecg': {
+                            'I': t.flatten(), #np.median(data_prep, axis=0).flatten(),
+                        },
+                        'subject': index,
+                        'rhythm': row['Rhythm'],
+                        'beat': row['Beat'],
+                        'quality': q[0],
+                        'age': row['PatientAge'],
+                        'gender': row['Gender'],
+                        'ventricular_rate': row['VentricularRate'],
+                        'atrial_rate': row['AtrialRate'],
+                        'qrs_duration': row['QRSDuration'],
+                        'qt_interval': row['QTInterval'],
+                        'qt_corrected': row['QTCorrected'],
+                        'r_axis': row['RAxis'],
+                        't_axis': row['TAxis'],
+                        'qrs_count': row['QRSCount'],
+                        'q_onset': row['QOnset'],
+                        'q_offset': row['QOffset'],
+                        't_offset': row['TOffset'],
+                    }
             except Exception as e:
                 print(e)
                 pass

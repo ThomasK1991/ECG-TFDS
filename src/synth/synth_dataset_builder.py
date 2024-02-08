@@ -4,14 +4,18 @@ import tensorflow_datasets as tfds
 from utils.preprocessing import Preprocess
 import numpy as np
 import subprocess
+from itertools import product
+import random
+import string
+import copy
 
 
 class Builder(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for synth dataset."""
 
-    VERSION = tfds.core.Version('1.0.0')
+    VERSION = tfds.core.Version('1.0.11')
     RELEASE_NOTES = {
-        '1.0.0': 'Initial release.',
+        '1.0.11': 'Change all parameters.',
     }
 
     def runcmd(self, cmd, verbose=False, *args, **kwargs):
@@ -28,6 +32,9 @@ class Builder(tfds.core.GeneratorBasedBuilder):
             print(std_out.strip(), std_err)
         pass
 
+    def key_generator(size=128, chars=string.ascii_uppercase + string.digits):
+        return ''.join(random.choice(chars) for _ in range(size))
+
     def _info(self) -> tfds.core.DatasetInfo:
         """Returns the dataset metadata."""
         return self.dataset_info_from_configs(
@@ -36,8 +43,28 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                     'I': np.float64,
                 }, length=500, doc='Single heartbeats of 1 second length'),
                 'quality': tfds.features.ClassLabel(names=['Unacceptable', 'Barely acceptable', 'Excellent', '[]']),
-                't_height': np.float64,
                 'p_height': np.float64,
+                'q_height': np.float64,
+                'r_height': np.float64,
+                's_height': np.float64,
+                't_height': np.float64,
+                'p_angle': np.float64,
+                'q_angle': np.float64,
+                'r_angle': np.float64,
+                's_angle': np.float64,
+                't_angle': np.float64,
+                'p_width': np.float64,
+                'q_width': np.float64,
+                'r_width': np.float64,
+                's_width': np.float64,
+                't_width': np.float64,
+                's_fecg': np.float64,
+                'N': np.float64,
+                'anoise': np.float64,
+                'hrmean': np.float64,
+                'hrstd': np.float64,
+                'lfhfratio': np.float64,
+                'sfint': np.float64,
             }),
             supervised_keys=('ecg', 'quality'),  # Set to `None` to disable
             homepage='https://physionet.org/content/ecgsyn/1.0.0/',
@@ -60,31 +87,104 @@ class Builder(tfds.core.GeneratorBasedBuilder):
         eng = matlab.engine.start_matlab()
         path = eng.genpath('./physionet.org/files/ecgsyn/1.0.0/Matlab/')
         eng.addpath(path, nargout=0)
+        parameters = {
+            'p_height': 1.2,
+            'q_height': -5.0,
+            'r_height': 30.0,
+            's_height': -7.5,
+            't_height': 0.75,
+            'p_angle': -70.0,
+            'q_angle': -15.0,
+            'r_angle': 0.0,
+            's_angle': 15.0,
+            't_angle': 100.0,
+            'p_width': 0.25,
+            'q_width': 0.1,
+            'r_width': 0.1,
+            's_width': 0.1,
+            't_width': 0.4,
+            'sfecg': 500,
+            'N': 50,
+            'anoise': 0.02,
+            'hrmean': 60,
+            'hrstd': 7,
+            'lfhfratio': 0.5,
+            'sfint': 500,
+        }
+        # TODO: In case of all vs. all generation (adapt the values to be arrays, e.g., t_width = np.linspace(0.2,0.6, 10),)
+        # combinations = [dict(zip(parameters, values)) for values in product(*parameters.values())]
 
-        for t_extrema in np.linspace(-2, 2, 10):
-            for p_extrema in np.linspace(-2, 2, 10):
+        toggle = {
+            'p_height': np.linspace(-2,2, 10),
+            'q_height': np.linspace(-10,0, 10),
+            'r_height': np.linspace(5,50, 10),
+            's_height': np.linspace(-15,15, 10),
+            't_height': np.linspace(-2,2, 10),
+            'p_angle': np.linspace(-120,-20, 10),
+            'q_angle': np.linspace(-25,-15, 10),
+            'r_angle': np.linspace(-5,5, 10),
+            's_angle': np.linspace(5,25, 10),
+            't_angle': np.linspace(75,125, 10),
+            'p_width': np.linspace(0.1,4, 10),
+            'q_width': np.linspace(0.01,0.3, 10),
+            'r_width': np.linspace(0.01,0.3, 10),
+            's_width': np.linspace(0.01,0.3, 10),
+            't_width': np.linspace(0.2,0.6, 10),
+        }
+
+
+        combinations = []
+        for k, val in toggle.items():
+            for j in val:
+                temp = copy.deepcopy(parameters)
+                temp[k] = j
+                combinations.append(temp)
+
+        for c in combinations:
+            try:
                 res = eng.ecgsyn(
-                    matlab.double(512),  # sfecg: ECG sampling frequency [256 Hertz]
-                    matlab.double(50),  # N: approximate number of heart beats [256]
-                    matlab.double(0.01),  # Anoise: Additive uniformly distributed measurement noise [0 mV]
-                    matlab.double(60),  # hrmean: Mean heart rate [60 beats per minute]
-                    matlab.double(2),  # hrstd: Standard deviation of heart rate [1 beat per minute]
-                    matlab.double(0.5),  # lfhfratio: LF/HF ratio [0.5]
-                    matlab.double(512),  # sfint: Internal sampling frequency [256 Hertz]
-                    # Order of extrema: [P Q R S T]
-                    matlab.double([-70, -15, 0, 15, 100]),  # ti = angles of extrema [-70 -15 0 15 100] degrees
-                    matlab.double([p_extrema, -5, 30, -7.5, t_extrema]),
-                    # ai = z-position of extrema [1.2 -5 30 -7.5 0.75]
-                    matlab.double([0.25, 0.1, 0.1, 0.1, 0.4]),  # bi = Gaussian width of peaks [0.25 0.1 0.1 0.1 0.4]
+                    matlab.double(c['sfecg']),
+                    matlab.double(c['N']),
+                    matlab.double(c['anoise']),
+                    matlab.double(c['hrmean']),
+                    matlab.double(c['hrstd']),
+                    matlab.double(c['lfhfratio']),
+                    matlab.double(c['sfint']),
+                    matlab.double([c['p_angle'], c['q_angle'], c['r_angle'], c['s_angle'], c['t_angle']]),
+                    matlab.double([c['p_height'], c['q_height'], c['r_height'], c['s_height'], c['t_height']]),
+                    matlab.double([c['p_width'], c['q_width'], c['r_width'], c['s_width'], c['t_width']]),
                 )
-                data_prep, q, ind = preprocessor.preprocess(data=np.array(res)[:, 0], sampling_rate=512)
+                data_prep, q, ind = preprocessor.preprocess(data=np.array(res)[:, 0], sampling_rate=500)
                 for j, k in enumerate(data_prep):
-                    key = str(hash('key_' + str(j) + '_' + str(t_extrema) + '_' + str(p_extrema)))
+                    key = str(random.getrandbits(128))
                     yield key, {
                         'ecg': {
                             'I': k.flatten(),
                         },
                         'quality': q[0],
-                        't_height': np.float64(t_extrema),
-                        'p_height': np.float64(p_extrema),
+                        'p_height': np.float64(c['p_height']),
+                        'q_height': np.float64(c['q_height']),
+                        'r_height': np.float64(c['r_height']),
+                        's_height': np.float64(c['s_height']),
+                        't_height': np.float64(c['t_height']),
+                        'p_angle': np.float64(c['p_angle']),
+                        'q_angle': np.float64(c['q_angle']),
+                        'r_angle': np.float64(c['r_angle']),
+                        's_angle': np.float64(c['s_angle']),
+                        't_angle': np.float64(c['t_angle']),
+                        'p_width': np.float64(c['p_width']),
+                        'q_width': np.float64(c['q_width']),
+                        'r_width': np.float64(c['r_width']),
+                        's_width': np.float64(c['s_width']),
+                        't_width': np.float64(c['t_width']),
+                        's_fecg': np.float64(c['sfecg']),
+                        'N': np.float64(c['N']),
+                        'anoise': np.float64(c['anoise']),
+                        'hrmean': np.float64(c['hrmean']),
+                        'hrstd': np.float64(c['hrstd']),
+                        'lfhfratio': np.float64(c['lfhfratio']),
+                        'sfint': np.float64(c['sfint']),
                     }
+            except Exception as e:
+                print(e)
+                continue

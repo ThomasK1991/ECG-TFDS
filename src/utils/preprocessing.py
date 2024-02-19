@@ -1,7 +1,6 @@
 import sklearn.preprocessing as sp
 import numpy as np
 import neurokit2 as nk
-import random
 
 class Preprocess:
     def __init__(self, onset: int, offset: int, final_length: int = None, peak='R'):
@@ -54,7 +53,6 @@ class Preprocess:
 
         temp = rpeaks['ECG_' + self.peak + '_Peaks'] - self.onset
         if random_shift:
-            #, len(temp)
             temp = temp + int(np.random.normal(0, 256)) #.astype(int)
         ind = (temp >= 0) & (temp + self.window_length < len(data))
         temp = temp[ind]

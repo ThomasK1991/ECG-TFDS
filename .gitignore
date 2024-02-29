@@ -166,3 +166,5 @@ data/*
 *.hea
 *.csv
 /src/synth/physionet.org/
+*.ipynb
+/media/

@@ -10,9 +10,9 @@ from utils.preprocessing import Preprocess
 class Builder(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for medalcare dataset."""
 
-    VERSION = tfds.core.Version('1.0.4')
+    VERSION = tfds.core.Version('1.0.5')
     RELEASE_NOTES = {
-        '1.0.4': 'Initial release.',
+        '1.0.5': 'Initial release.',
     }
 
     def _info(self) -> tfds.core.DatasetInfo:
@@ -24,7 +24,11 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                     'I': np.float64,
                 }),
                 'subject': np.int32,
-                'diagnosis': tfds.features.ClassLabel(names=['avblock', 'fam', 'iab', 'lae', 'lbbb', 'mi', 'rbbb', 'sinus']),
+                'diagnosis': tfds.features.ClassLabel(
+                    names=['avblock', 'fam', 'iab', 'lae', 'lbbb', 'mi', 'rbbb', 'sinus']),
+                'subdiagnosis': tfds.features.ClassLabel(
+                    names=['None', 'examples', 'LAD_0.3', 'LAD_1.0', 'LCX_0.3_ant', 'LCX_0.3_post', 'LCX_1.0_ant', 'LCX_1.0_post',
+                           'RCA_0.3', 'RCA_1.0']),
                 'v_G.lungs': np.float64,
                 'v_G.ischemia': np.float64,
                 'v_G.torso': np.float64,
@@ -205,17 +209,17 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                     lambda x: x.replace('mm/s', '').replace('deg', '').replace('mm', ''))
 
                 result = [part for part in k.split("/") if part]
-                print(result[10])
-
+                subdiag = len(result) > 14
                 for i, t in enumerate(data_prep):
                     dict = {
                         'ecg': {
                             'I': t.flatten(),
                         },
                         'subject': subject,
-                        'diagnosis': result[10] #TODO: 10 is set statically --> needs to be adapt
+                        'diagnosis': result[10],
+                        'subdiagnosis': result[11] if subdiag else 'None',
+                        # TODO: 10 and 11 is set statically --> needs to be adapt
                     }
-
                     for j in allowed:
                         dict.update({j: 0.0})
 

@@ -1,6 +1,6 @@
 # ECG-TFDS
 
-Load common open-source ECG databases as a tensorflow dataset.
+Load common open source ECG databases as a Tensorflow dataset. The final format should be ECG signals of one second in length, representing a heartbeat. The R-peaks form the center of the signal, which is normalized in the range $\[0, 1\]$.
 
 ## How to get started?
 
@@ -41,3 +41,21 @@ To incorporate a new dataset into the collection, follow these steps:
 10. Create a pull request and provide a concise motivation, description, and dataset metadata, including details like count, size, dataset license, and source.
 
 Ensure adherence to these steps to seamlessly integrate the new dataset into the collection.
+
+## How to cite?
+
+If you are using this repository please reference the following article: (to be determined)
+
+```
+@article{kapsecker2024disentangled,
+  title={Disentangled Representational Learning of Single Lead Electrocardiogram Signals using Variational Autoencoder},
+  author={Kapsecker, Maximilian and Möller, Matthias C and Jonas, Stephan M},
+  journal={TBD},
+  volume={TBD},
+  number={TBD},
+  pages={TBD},
+  year={TBD},
+  publisher={TBD}
+}
+```
+

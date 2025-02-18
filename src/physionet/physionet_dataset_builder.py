@@ -1,4 +1,4 @@
-"""ptb dataset."""
+"""physionet dataset."""
 
 import tensorflow_datasets as tfds
 import pandas as pd
@@ -39,15 +39,20 @@ class Builder(tfds.core.GeneratorBasedBuilder):
 
         return self.dataset_info_from_configs(
             features=tfds.features.FeaturesDict({
-                'ecg': tfds.features.Sequence({'I': np.float64}),
+                'ecg': tfds.features.Sequence({
+                    'I': np.float64, 'II': np.float64, 'III': np.float64,
+                    'aVR': np.float64, 'aVL': np.float64, 'aVF': np.float64,
+                    'V1': np.float64, 'V2': np.float64, 'V3': np.float64,
+                    'V4': np.float64, 'V5': np.float64, 'V6': np.float64,
+                }),
                 'subject': tfds.features.Text(),
                 'quality': tfds.features.ClassLabel(names=['Unacceptable', 'Barely acceptable', 'Excellent', '[]']),
                 'nsamp': np.uint16,
-                'leads': tfds.features.Sequence(tfds.features.Text()),
+                'lead': tfds.features.Text(),
                 'age': np.uint16,
-                'gender': tfds.features.ClassLabel(names=['Male', 'Female']),
-                'frequency': np.uint8,
-                'diagnostic': tfds.features.Tensor(shape=(26,), dtype=np.bool_),
+                'gender': tfds.features.ClassLabel(names=['Male', 'Female', 'Unknown']),
+                'frequency': np.uint16,
+                'diagnostic': tfds.features.Tensor(shape=(26,), dtype=np.float32),
                 'dx': tfds.features.Sequence(tfds.features.Text()),
             }),
             supervised_keys=None,
@@ -56,7 +61,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
 
     def _split_generators(self, dl_manager: tfds.download.DownloadManager):
         """Returns SplitGenerators."""
-        path = r"C:\Users\Thomas Kaprielian\Documents\4yp_Data\physionet.org\files\challenge-2021\1.0.3\training\ptb-xl\g1"
+        path = r"C:\Users\Thomas Kaprielian\Documents\4yp_Data\test_VAE"
 
         if not os.path.exists(path):
             raise ValueError(f"The specified dataset path {path} does not exist.")
@@ -102,10 +107,28 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 if x in multiple_classes:
                     classes[j] = multiple_classes[0]  # Use the first class as the representative class.
         return classes
+    
+    def expand_leads(self,recording,input_leads):
+        output = np.zeros((12, recording.shape[1]))
+        twelve_leads = ('I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6')
+        twelve_leads = [k.lower() for k in twelve_leads]
+
+        input_leads = [k.lower() for k in input_leads]
+        output_leads = np.zeros((12,))
+        for i,k in enumerate(input_leads):
+            idx = twelve_leads.index(k)
+            output[idx,:] = recording[i,:]
+            output_leads[idx] = 1
+        return output,output_leads
 
     def _generate_examples(self, header_files, recording_files):
-        """Yields examples from the local dataset."""
+        """Yields segmented ECG examples with preprocessing applied."""
+
+        # Initialize Preprocessor (Chopping ECG into peaks)
+        preprocessor = Preprocess(250, 250, peak='R', final_length=500)
+
         for header_file, recording_file in zip(header_files, recording_files):
+            # Load metadata from header file
             hdr = load_header(header_file)
 
             tmp = {
@@ -120,31 +143,70 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 'target': np.zeros((26,))
             }
 
-            # Convert gender to expected format
-            if tmp['sex'] == 'M':
-                tmp['sex'] = 'Male'
-            elif tmp['sex'] == 'F':
-                tmp['sex'] = 'Female'
+            # Convert age: Ensure it's an integer and replace NaN with 0
+            age = int(tmp['age']) if not np.isnan(tmp['age']) else 0
 
-            tmp['dx'] = self.replace_equivalent_classes(tmp['dx'],self.equivalent_classes)
+            # Convert gender: 'M' -> 'Male', 'F' -> 'Female'
+            gender = 'Male' if tmp['sex'] == 'M' else 'Female' if tmp['sex'] == 'F' else 'Unknown'
 
+            # Replace equivalent diagnostic classes
+            tmp['dx'] = self.replace_equivalent_classes(tmp['dx'], self.equivalent_classes)
+
+            # Convert diagnostic labels to one-hot encoding
             for dx in tmp['dx']:
                 if dx in self.classes:
                     idx = self.classes.index(dx)
                     tmp['target'][idx] = 1
 
-            # Load ECG signals (removing .mat extension)
-            record = wfdb.rdsamp(recording_file[:-4])  # Remove '.mat'
-            ecg_signal = record[0] if record else np.zeros((tmp['nsamp'], 1))  # Default to zeros if loading fails
+            # Load full ECG signal
+            record_path = os.path.splitext(recording_file)[0]  # Remove '.mat' extension
+            try:
+                record = wfdb.rdsamp(record_path)
+                ecg_data = record[0].T  # Transpose (num_leads, num_samples)
+                available_leads = tmp['leads']
+            except Exception as e:
+                print(f"Error reading {record_path}: {e}")
+                ecg_data = np.zeros((12, tmp['nsamp']))  # Default to zeros if loading fails
+                available_leads = []
 
-            yield header_file, {
-                'ecg': {'I': ecg_signal.flatten()},
-                'subject': tmp['header'],
-                'quality': 'Excellent',  # Placeholder value
-                'nsamp': tmp['nsamp'],
-                'leads': tmp['leads'],
-                'age': tmp['age'],
-                'gender': tmp['sex'],
-                'diagnostic': tmp['target'],
-                'dx': tmp['dx'],
-            }
+
+
+            # Apply Preprocessing (Segment ECG into peaks for each lead)
+            segmented_ecgs = []
+            qualities = []
+            for lead_signal in ecg_data:
+                data_prep, q, _ = preprocessor.preprocess(data=lead_signal, sampling_rate=tmp['fs'])
+                segmented_ecgs.append(data_prep)
+                qualities.append(q)
+
+            # Ensure segmentation length consistency across leads
+            num_segments = min(len(seg) for seg in segmented_ecgs)
+            lead_names = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
+
+            # Assign a unique key and yield each segmented ECG as a separate entry
+            for j in range(num_segments):
+                key = f"{os.path.basename(header_file)}_{j}"  # Unique key per segment
+
+                    # Extract only the processed segments (without manual zero padding)
+                unexpanded_ecg = np.array([
+                    seg[j].flatten() for seg in segmented_ecgs if seg is not None
+                ])
+
+                # Expand leads at the very end
+                expanded_ecg, output_leads = self.expand_leads(unexpanded_ecg, available_leads)
+
+                # Store ECG as a dictionary with 12 leads
+                ecg_dict = {lead_names[i]: expanded_ecg[i].flatten() for i in range(12)}
+
+                yield key, {
+                    'ecg': ecg_dict,  # Each segment contains a full 12-lead ECG
+                    'subject': os.path.basename(header_file),  # Use filename as subject ID
+                    'quality': str(qualities[0][j]),  # Assign quality from the first lead
+                    'age': age,  # Ensure integer age
+                    'gender': gender,  # Convert gender format
+                    'diagnostic': tmp['target'].astype(np.float32),  # Ensure float32 for TFDS
+                    'dx': tmp['dx'],
+                    'nsamp': len(segmented_ecgs[0][j]),  # Number of samples per segment
+                    'lead': '12-lead',  # Indicate full 12-lead ECG
+                    'frequency': tmp['fs']
+                }

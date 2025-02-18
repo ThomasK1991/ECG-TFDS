@@ -1,13 +1,13 @@
-"""ptb dataset."""
+"""physionet dataset."""
 
 import tensorflow_datasets as tfds
-from . import ptb_dataset_builder
+from . import physionet_dataset_builder
 
 
 class physionetTest(tfds.testing.DatasetBuilderTestCase):
-  """Tests for ptb dataset."""
+  """Tests for physionet dataset."""
   # TODO(ptb):
-  DATASET_CLASS = ptb_dataset_builder.Builder
+  DATASET_CLASS = physionet_dataset_builder.Builder
   SPLITS = {
       'train': 3,  # Number of fake train example
       'test': 1,  # Number of fake test example

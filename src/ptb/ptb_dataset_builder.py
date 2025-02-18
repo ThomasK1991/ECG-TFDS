@@ -30,7 +30,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 }),
                 'subject': np.int32,
                 'quality': tfds.features.ClassLabel(names=['Unacceptable', 'Barely acceptable', 'Excellent', '[]']),
-                'age': np.uint8,
+                'age': np.uint16,
                 'gender': np.uint8,
                 'diagnostic': tfds.features.ClassLabel(names=['STTC', 'NORM', 'MI', 'HYP', 'CD', 'NAV']),
             }),

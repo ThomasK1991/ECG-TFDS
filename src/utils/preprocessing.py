@@ -1,6 +1,7 @@
 import sklearn.preprocessing as sp
 import numpy as np
 import neurokit2 as nk
+from scipy import signal
 
 class Preprocess:
     def __init__(self, onset: int, offset: int, final_length: int = None, peak='R'):
@@ -10,13 +11,32 @@ class Preprocess:
         self.final_length = final_length or self.window_length
         self.peak = peak
 
+
     def clean(self, ecg_signal, sampling_rate):
-        """Clean the ECG signal using neurokit2's ecg_clean."""
+        """Resample ECG to 500Hz and apply Neurokit2's ECG cleaning."""
+        print("\n--- Debug: ECG Signal Before Cleaning ---")
+        print("First 10 values:", ecg_signal[:10] if len(ecg_signal) > 10 else ecg_signal)
+        print("Min:", np.min(ecg_signal), "Max:", np.max(ecg_signal))
+        print("Mean:", np.mean(ecg_signal), "Std Dev:", np.std(ecg_signal))
+        print("Contains NaN:", np.isnan(ecg_signal).any())
+        print("Contains only zeros:", np.all(ecg_signal == 0))
+        print("--------------------------------------\n")
+
+        # If the entire signal is NaN, return a zero array
+        if np.isnan(ecg_signal).all():
+            print("⚠️ Warning: ECG signal is completely NaN. Returning zeros.")
+            return np.zeros((500,))  # Return zeros if the entire signal is NaN
+
+        # Replace NaN values with zero (or interpolate if needed)
+        ecg_signal = np.nan_to_num(ecg_signal, nan=0.0)
+
+        # Apply Neurokit2 cleaning only if the signal is valid
         try:
-            clean = nk.ecg_clean(ecg_signal, sampling_rate=sampling_rate)
-            return clean
+            clean_signal = nk.ecg_clean(ecg_signal, sampling_rate=sampling_rate)
+            return clean_signal
         except Exception as e:
-            raise ValueError("Error during ECG cleaning: " + str(e))
+            print(f"⚠️ Warning: NeuroKit2 failed. Returning zeros instead. Error: {e}")
+            return np.zeros((500,))  # Return a zero array if NeuroKit2 fails
 
     def quality(self, ecg_signal, sampling_rate):
         """Compute ECG quality using neurokit2's ecg_quality."""

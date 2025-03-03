@@ -23,8 +23,8 @@ if not filtered_samples:
     for subject in sorted(subject_ids):
         print(subject)
 else:
-    # Create 12 subplots (2 columns: Individual + Average)
-    fig, axes = plt.subplots(12, 2, figsize=(12, 24))
+    # Create 12 subplots (2 columns: Individual + Average) with increased height spacing
+    fig, axes = plt.subplots(12, 2, figsize=(12, 30))  # Keep width, increase height for better spacing
 
     # Store all signals for averaging
     ecg_signals = {lead: [] for lead in lead_names}
@@ -65,6 +65,8 @@ else:
     axes[-1, 0].set_xlabel("Time (samples)")
     axes[-1, 1].set_xlabel("Time (samples)")
 
+    # Adjust spacing between subplots (increase vertical space)
+    plt.subplots_adjust(hspace=4)  # Increase height spacing
+
     # Display the plots
-    plt.tight_layout()
     plt.show()

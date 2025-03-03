@@ -6,6 +6,8 @@ import wfdb
 import numpy as np
 import ast
 import sys
+import random
+
 import os
 from utils.preprocessing import Preprocess
 from helper_code import *
@@ -53,14 +55,15 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 'gender': tfds.features.ClassLabel(names=['Male', 'Female', 'Unknown']),
                 'frequency': np.uint16,
                 'diagnostic': tfds.features.Tensor(shape=(26,), dtype=np.float32),
-                'dx': tfds.features.Sequence(tfds.features.Text()),
             }),
             supervised_keys=None,
             homepage='https://physionet.org/content/ptb-xl/1.0.3/',
         )
 
+
     def _split_generators(self, dl_manager: tfds.download.DownloadManager):
-        """Returns SplitGenerators."""
+        """Returns SplitGenerators with train and test splits."""
+
         path = r"C:\Users\Thomas Kaprielian\Documents\4yp_Data\test_VAE"
 
         if not os.path.exists(path):
@@ -71,9 +74,40 @@ class Builder(tfds.core.GeneratorBasedBuilder):
         if len(header_files) == 0:
             raise ValueError(f"No .hea files found in {path}")
 
+        # Shuffle the dataset before splitting
+        combined = list(zip(header_files, recording_files))
+        random.shuffle(combined)  # Shuffle to ensure randomness
+        header_files, recording_files = zip(*combined)  # Unzip back
+
+        # Determine split indices for train, validation, and test
+        train_ratio = 0.7  # 70% training
+        val_ratio = 0.15   # 15% validation
+        test_ratio = 0.15  # 15% test
+
+        total_samples = len(header_files)
+        train_index = int(total_samples * train_ratio)
+        val_index = int(total_samples * (train_ratio + val_ratio))
+
+        # Split files into train, validation, and test sets
+        train_header_files, val_header_files, test_header_files = (
+            header_files[:train_index],
+            header_files[train_index:val_index],
+            header_files[val_index:]
+        )
+
+        train_recording_files, val_recording_files, test_recording_files = (
+            recording_files[:train_index],
+            recording_files[train_index:val_index],
+            recording_files[val_index:]
+        )
+
+        # Generate dataset splits
         return {
-            'train': self._generate_examples(header_files, recording_files),
+            'train': self._generate_examples(train_header_files, train_recording_files),
+            'validation': self._generate_examples(val_header_files, val_recording_files),
+            'test': self._generate_examples(test_header_files, test_recording_files),
         }
+
 
     def find_challenge_files(self, data_directory):
         header_files = []
@@ -205,7 +239,6 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                     'age': age,  # Ensure integer age
                     'gender': gender,  # Convert gender format
                     'diagnostic': tmp['target'].astype(np.float32),  # Ensure float32 for TFDS
-                    'dx': tmp['dx'],
                     'nsamp': len(segmented_ecgs[0][j]),  # Number of samples per segment
                     'lead': '12-lead',  # Indicate full 12-lead ECG
                     'frequency': tmp['fs']

@@ -18,7 +18,7 @@ sys.path.append(project_path)
 
 
 class Builder(tfds.core.GeneratorBasedBuilder):
-    """DatasetBuilder for ptb dataset."""
+    """DatasetBuilder for physionet dataset."""
 
     VERSION = tfds.core.Version('1.0.3')
     RELEASE_NOTES = {

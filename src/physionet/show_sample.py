@@ -41,5 +41,5 @@ def plot_12lead_ecg(file_path):
 
 # Example usage:
 # Change this to the path of your file (without the .mat extension)
-file_path = r"C:\Users\Thomas Kaprielian\Documents\4yp_Data\test_VAE\I0003"
+file_path = r"C:\Users\Thomas Kaprielian\Documents\4yp_Data\physionet.org\files\challenge-2021\1.0.3\training\ptb-xl\g21\HR20874.mat"
 plot_12lead_ecg(file_path)

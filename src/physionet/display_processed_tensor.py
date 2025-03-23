@@ -16,7 +16,7 @@ for example in ds:
     try:
         ecg_beat = np.stack([ecg_dict[lead].numpy() for lead in lead_names])  # (12, length)
         beats.append(ecg_beat)
-        if len(beats) >= 1:
+        if len(beats) >= 100:
             break
     except Exception as e:
         print(f"⚠️ Skipping malformed sample: {e}")

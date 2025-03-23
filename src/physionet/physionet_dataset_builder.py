@@ -208,10 +208,13 @@ class Builder(tfds.core.GeneratorBasedBuilder):
             # Apply Preprocessing (Segment ECG into peaks for each lead)
             segmented_ecgs = []
             qualities = []
+            i=0
             for lead_signal in ecg_data:
-                data_prep, q, _ = preprocessor.preprocess(data=lead_signal, sampling_rate=tmp['fs'])
+
+                data_prep, q, _ = preprocessor.preprocess(data=lead_signal, sampling_rate=tmp['fs'], backup_signal = ecg_data, i=i)
                 segmented_ecgs.append(data_prep)
                 qualities.append(q)
+                i+=1
 
             # Ensure segmentation length consistency across leads
             num_segments = min(len(seg) for seg in segmented_ecgs)

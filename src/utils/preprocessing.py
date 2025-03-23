@@ -1,7 +1,55 @@
 import sklearn.preprocessing as sp
 import numpy as np
-import neurokit2 as nk
 from scipy import signal
+import matplotlib.pyplot as plt
+import neurokit2 as nk
+import matplotlib.pyplot as plt
+def compare_fixed_vs_adaptive(data, rpeaks, sampling_rate, final_length=300, onset=100, offset=200):
+    rpeaks_list = rpeaks['ECG_R_Peaks']
+    fixed_beats = []
+    adaptive_beats = []
+
+    for i in range(1, len(rpeaks_list) - 1):
+        r = rpeaks_list[i]
+        prev_rr = r - rpeaks_list[i - 1]
+        next_rr = rpeaks_list[i + 1] - r
+
+        # --- Fixed window ---
+        start_f = r - onset
+        end_f = r + offset
+        if start_f >= 0 and end_f < len(data):
+            beat_fixed = data[start_f:end_f]
+            beat_fixed = nk.signal.signal_resample(beat_fixed, desired_length=final_length,sampling_rate=sampling_rate)
+            fixed_beats.append(beat_fixed)
+
+        # --- Adaptive window ---
+        total_window = int(0.5*(prev_rr + next_rr))  # Or however much you want
+        half_window = total_window // 2
+
+        start_a = r - half_window
+        end_a = r + half_window
+        if start_a >= 0 and end_a < len(data):
+            beat_adaptive = data[start_a:end_a]
+            beat_adaptive = nk.signal.signal_resample(beat_adaptive, desired_length=final_length,sampling_rate=sampling_rate)
+            adaptive_beats.append(beat_adaptive)
+
+    # --- Plot comparison ---
+    num_to_plot = min(10, len(fixed_beats), len(adaptive_beats))
+    fig, axs = plt.subplots(2, 1, figsize=(14, 6), sharex=True)
+
+    for i in range(num_to_plot):
+        axs[0].plot(fixed_beats[i], alpha=0.5, label=f"Beat {i+1}")
+        axs[1].plot(adaptive_beats[i], alpha=0.5, label=f"Beat {i+1}")
+
+    axs[0].set_title("Fixed Windowed Beats")
+    axs[1].set_title("RR-Adaptive Windowed Beats")
+
+    for ax in axs:
+        ax.grid(True)
+        ax.set_ylabel("Amplitude")
+    axs[-1].set_xlabel("Resampled Samples")
+    plt.tight_layout()
+    plt.show()
 
 class Preprocess:
     def __init__(self, onset: int, offset: int, final_length: int = None, peak='R'):
@@ -71,23 +119,52 @@ class Preprocess:
         #temp = temp[(temp - self.onset) >= 0]
         #temp = temp[(temp + self.offset) < len(data)]
 
-        temp = rpeaks['ECG_' + self.peak + '_Peaks'] - self.onset
+        rpeaks_raw = rpeaks['ECG_' + self.peak + '_Peaks']
+
+        # Optional random shift
         if random_shift:
-            temp = temp + int(np.random.normal(0, 256)) #.astype(int)
-        ind = (temp >= 0) & (temp + self.window_length < len(data))
-        temp = temp[ind]
+            rpeaks_raw = rpeaks_raw + int(np.random.normal(0, 256))
 
-        for k in temp:
-            temp1 = nk.signal.signal_resample(
-                data[k:(k + self.window_length)],
-                desired_length=self.final_length,
-                sampling_rate=sampling_rate,
-            )
-            result.append(temp1)
-            qual.append('Excellent') #self.quality(temp1, sampling_rate))
+        # Filter out beats that would go out of bounds
+        ind = (rpeaks_raw >= 0) & (rpeaks_raw < len(data))
+        rpeaks_raw = rpeaks_raw[ind]
 
+        for i in range(1, len(rpeaks_raw) - 1):
+            k = rpeaks_raw[i]
+            prev_rr = k - rpeaks_raw[i - 1]
+            next_rr = rpeaks_raw[i + 1] - k
+
+            total_window = int(0.5 * (prev_rr + next_rr))  # Or however much you want
+            half_window = total_window // 2
+
+            start = k - half_window
+            end = k + half_window
+
+            if start >= 0 and end < len(data):
+                segment = data[start:end]
+
+                # Resample to fixed length
+                temp1 = nk.signal.signal_resample(
+                    segment,
+                    desired_length=self.final_length,
+                    sampling_rate=sampling_rate,
+                )
+
+                result.append(temp1)
+                qual.append("Excellent")
+
+        # Convert to array
         result = np.array(result)
+
+        if result.shape[0] == 0:
+            print("⚠️ Warning: No valid samples extracted for scaling!")
+            return np.zeros((1, self.final_length, 1)), ["[]"], np.array([False])
+
+
+        # --- Min-Max Scale ---
         result = sp.minmax_scale(result, axis=1)
+
+        # --- Reshape ---
         result = result.reshape(len(result), self.final_length, 1)
 
         return result, qual, ind

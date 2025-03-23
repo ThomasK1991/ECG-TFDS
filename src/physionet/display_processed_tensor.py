@@ -1,35 +1,51 @@
-import scipy.io
-import numpy as np
+import tensorflow_datasets as tfds
 import matplotlib.pyplot as plt
+import numpy as np
 
-# Load the .mat file
-file_path = r"C:\Users\Thomas Kaprielian\Documents\4yp_Data\physionet.org\files\challenge-2021\1.0.3\training\chapman_shaoxing\g11\JS10627.mat"
-data = scipy.io.loadmat(file_path)
+# Load dataset
+ds = tfds.load('physionet', split='train', as_supervised=False)
 
-# Print keys to see structure
-print("\n🔍 Available keys in .mat file:")
-print(data.keys())
-# Define expected lead names
+# Define lead names
 lead_names = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
 
-# Extract ECG signals (update key based on Step 1 output)
-ecg_data = data['val']  # Common key for ECG data in PhysioNet .mat files
+# Collect up to 100 beats
+beats = []
 
-# Check ECG shape
-print(f"\n✅ ECG Data Shape: {ecg_data.shape}")
+for example in ds:
+    ecg_dict = example['ecg']
+    try:
+        ecg_beat = np.stack([ecg_dict[lead].numpy() for lead in lead_names])  # (12, length)
+        beats.append(ecg_beat)
+        if len(beats) >= 1:
+            break
+    except Exception as e:
+        print(f"⚠️ Skipping malformed sample: {e}")
 
-# Ensure the data matches expected lead count
-if ecg_data.shape[0] == len(lead_names):
-    fig, axes = plt.subplots(12, 1, figsize=(12, 20), sharex=True)
+# Stack into shape (100, 12, beat_length)
+beats = np.stack(beats)
+num_beats, num_leads, beat_length = beats.shape
 
-    for i, lead in enumerate(lead_names):
-        axes[i].plot(ecg_data[i], label=lead)
-        axes[i].set_title(f"Lead {lead}")
-        axes[i].legend()
-        axes[i].grid()
+# Create figure with 12 subplots
+fig, axes = plt.subplots(12, 1, figsize=(14, 20), sharex=True)
+fig.suptitle("Overlay of First 100 ECG Beats with Mean Trace per Lead", fontsize=16, y=1.02)
 
-    plt.xlabel("Time (samples)")
-    plt.tight_layout()
-    plt.show()
-else:
-    print(f"⚠️ Unexpected shape! Check .mat file keys. Expected {len(lead_names)} leads, but got {ecg_data.shape[0]}")
+for i in range(num_leads):
+    ax = axes[i]
+    for b in range(num_beats):
+        ax.plot(beats[b, i], alpha=0.3, linewidth=0.8, color='blue')
+    
+    # Compute and plot mean beat for this lead
+    mean_beat = np.mean(beats[:, i, :], axis=0)
+    ax.plot(mean_beat, color='black', linewidth=2.0, label='Mean Beat')
+
+    ax.set_title(f"Lead {lead_names[i]}", loc='left')
+    ax.grid(True)
+    ax.set_ylabel("mV")
+    if i < 11:
+        ax.tick_params(labelbottom=False)
+    else:
+        ax.set_xlabel("Samples")
+    ax.legend(loc='upper right', fontsize=8)
+
+plt.tight_layout()
+plt.show()

@@ -105,7 +105,7 @@ class Preprocess:
         except Exception as e:
             raise ValueError("Error finding PQRST peaks: " + str(e))
 
-    def preprocess(self, data, sampling_rate, rpeaks=None, random_shift=False):
+    def preprocess(self, data, sampling_rate, rpeaks=None, random_shift=False, backup_signal=None,i=None):
         """Preprocess the ECG data."""
         result = []
         qual = []
@@ -114,12 +114,19 @@ class Preprocess:
 
         if rpeaks is None:
             rpeaks = self.pqrst_peaks(ecg_clean, sampling_rate)
+            rpeaks_raw = rpeaks['ECG_' + self.peak + '_Peaks']
+            if len(rpeaks_raw) < 2 and backup_signal is not None:
+                print(f"⚠️ Few or no R-peaks detected in primary signal {i}. Trying backup signal.")
+                i = 0
+                while len(rpeaks_raw) <2 and i<=11:
+                    backup_clean = self.clean(backup_signal[i], sampling_rate)
+                    rpeaks = self.pqrst_peaks(backup_clean, sampling_rate)
+                    rpeaks_raw = rpeaks['ECG_' + self.peak + '_Peaks']
+                    i+=1
 
         #temp = rpeaks['ECG_' + self.peak + '_Peaks']
         #temp = temp[(temp - self.onset) >= 0]
         #temp = temp[(temp + self.offset) < len(data)]
-
-        rpeaks_raw = rpeaks['ECG_' + self.peak + '_Peaks']
 
         # Optional random shift
         if random_shift:
@@ -157,7 +164,7 @@ class Preprocess:
         result = np.array(result)
 
         if result.shape[0] == 0:
-            print("⚠️ Warning: No valid samples extracted for scaling!")
+            print(f"⚠️ Warning: No valid samples extracted for scaling in lead {i}!")
             return np.zeros((1, self.final_length, 1)), ["[]"], np.array([False])
 
 
